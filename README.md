@@ -63,7 +63,7 @@ public class Person extends RealmObject {
 
 **PersonFields** class is automatically generated
 
-```
+```java
 package io.realm.fields;
 
 import java.lang.String;

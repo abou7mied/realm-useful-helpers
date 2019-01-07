@@ -16,11 +16,11 @@ to all queryable field names.
 Include the following dependency in your `gradle.build` file
 
 ```gradle
-annotationProcessor 'com.github.abou7mied:realm-useful-helpers:1.0.1'
+annotationProcessor 'com.github.abou7mied:realm-useful-helpers:1.0.2'
 ```
 
 Add the maven repo to your repositories
-```
+```gradle
 repositories {
     maven {
         url "https://dl.bintray.com/abou7mied/maven"

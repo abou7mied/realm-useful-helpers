@@ -75,11 +75,13 @@ public class CustomRealmAnnotationProcessor extends AbstractProcessor {
         elementUtils = processingEnv.getElementUtils();
         typeUtils = processingEnv.getTypeUtils();
 
-        realmModelInterface = elementUtils.getTypeElement("io.realm.RealmModel").asType();
-        realmListClass = typeUtils.getDeclaredType(elementUtils.getTypeElement("io.realm.RealmList"),
-                typeUtils.getWildcardType(null, null));
-        realmResultsClass = typeUtils.getDeclaredType(elementUtils.getTypeElement("io.realm.RealmResults"),
-                typeUtils.getWildcardType(null, null));
+        if (elementUtils.getTypeElement("io.realm.RealmModel") != null) {
+            realmModelInterface = elementUtils.getTypeElement("io.realm.RealmModel").asType();
+            realmListClass = typeUtils.getDeclaredType(elementUtils.getTypeElement("io.realm.RealmList"),
+                    typeUtils.getWildcardType(null, null));
+            realmResultsClass = typeUtils.getDeclaredType(elementUtils.getTypeElement("io.realm.RealmResults"),
+                    typeUtils.getWildcardType(null, null));
+        }
 
         filer = processingEnv.getFiler();
     }
@@ -100,137 +102,138 @@ public class CustomRealmAnnotationProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
 
-        try {
+        if (parameterizedTypeName != null)
+            try {
 
-            parameterizedTypeName = ParameterizedTypeName.get(ClassName.get(HashMap.class), ClassName.get(String.class), ClassName.get(Object.class));
-            TypeName hashMapTypeName = ParameterizedTypeName.get(ClassName.get(HashMap.class), ClassName.get(Class.class), parameterizedTypeName);
+                parameterizedTypeName = ParameterizedTypeName.get(ClassName.get(HashMap.class), ClassName.get(String.class), ClassName.get(Object.class));
+                TypeName hashMapTypeName = ParameterizedTypeName.get(ClassName.get(HashMap.class), ClassName.get(Class.class), parameterizedTypeName);
 
-            FieldSpec gsonToRealmMap = FieldSpec.builder(hashMapTypeName, JSON_TO_REALM_MAP_NAME)
-                    .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                    .initializer("new $T()", hashMapTypeName)
-                    .build();
+                FieldSpec gsonToRealmMap = FieldSpec.builder(hashMapTypeName, JSON_TO_REALM_MAP_NAME)
+                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                        .initializer("new $T()", hashMapTypeName)
+                        .build();
 
-            realmGsonClassBuilder = TypeSpec
-                    .classBuilder("RealmJsonMapping")
-                    .addField(gsonToRealmMap)
-                    .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
-
-
-            final String classParamName = "cls";
-            final String keyParamName = "key";
-            final String getRealmNameMethod = "getRealmName";
-            final String mapJsonObjectToRealmMethod = "mapJsonObjectToRealm";
-            final String mapJsonArrayToRealmMethod = "mapJsonArrayToRealm";
-            final String getNameOfMethod = "getNameOf";
+                realmGsonClassBuilder = TypeSpec
+                        .classBuilder("RealmJsonMapping")
+                        .addField(gsonToRealmMap)
+                        .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
 
 
-            mapReferenceType = TypeSpec.classBuilder("MapReference").
-                    addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .addField(String.class, "key")
-                    .addField(Class.class, "cls")
-                    .addMethod(
-                            MethodSpec.constructorBuilder()
-                                    .addParameter(String.class, "key")
-                                    .addParameter(Class.class, "cls")
-                                    .addStatement("this.key = key")
-                                    .addStatement("this.cls = cls")
-                                    .build()
-                    )
-
-                    .addMethod(
-                            MethodSpec.methodBuilder("getKey")
-                                    .addStatement("return key")
-                                    .returns(String.class)
-                                    .build()
-                    )
-                    .addMethod(
-                            MethodSpec.methodBuilder("getCls")
-                                    .addStatement("return cls")
-                                    .returns(Class.class)
-                                    .build()
-                    )
-                    .addMethod(
-                            MethodSpec.methodBuilder("getHashMap")
-                                    .addStatement("return $L.get(cls)", JSON_TO_REALM_MAP_NAME)
-                                    .returns(parameterizedTypeName)
-                                    .build()
-                    )
-                    .build();
-
-            mapSubPolicyEnum = TypeSpec.enumBuilder("MapSubPolicy")
-                    .addEnumConstant("ASSIGN_ONLY")
-                    .addEnumConstant("ASSIGN_AND_MAP")
-                    .addEnumConstant("IGNORE")
-                    .build();
-
-            MethodSpec getRealmNameMethodSpec = MethodSpec
-                    .methodBuilder(getRealmNameMethod)
-                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .returns(String.class)
-                    .addParameter(Class.class, classParamName)
-                    .addParameter(String.class, keyParamName)
-                    .addStatement("$T realmName = null", String.class)
-                    .beginControlFlow("if ($L.containsKey($L))", JSON_TO_REALM_MAP_NAME, classParamName)
-                    .addStatement("$T map = $L.get($L)", parameterizedTypeName, JSON_TO_REALM_MAP_NAME, classParamName)
-                    .addStatement("realmName = $L($L, map)", getNameOfMethod, keyParamName)
-                    .endControlFlow()
-                    .addStatement("return realmName")
-                    .build();
+                final String classParamName = "cls";
+                final String keyParamName = "key";
+                final String getRealmNameMethod = "getRealmName";
+                final String mapJsonObjectToRealmMethod = "mapJsonObjectToRealm";
+                final String mapJsonArrayToRealmMethod = "mapJsonArrayToRealm";
+                final String getNameOfMethod = "getNameOf";
 
 
-            ParameterizedTypeName setString = ParameterizedTypeName.get(Set.class, String.class);
+                mapReferenceType = TypeSpec.classBuilder("MapReference").
+                        addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                        .addField(String.class, "key")
+                        .addField(Class.class, "cls")
+                        .addMethod(
+                                MethodSpec.constructorBuilder()
+                                        .addParameter(String.class, "key")
+                                        .addParameter(Class.class, "cls")
+                                        .addStatement("this.key = key")
+                                        .addStatement("this.cls = cls")
+                                        .build()
+                        )
 
-            MethodSpec mapJsonObjectToRealmBaseMethodSpec = MethodSpec
-                    .methodBuilder(mapJsonObjectToRealmMethod)
-                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .addException(JSONException.class)
-                    .returns(JSONObject.class)
-                    .addParameter(Class.class, classParamName)
-                    .addParameter(JSONObject.class, "object")
-                    .addStatement("return $L($L, object, MapSubPolicy.ASSIGN_ONLY)", mapJsonObjectToRealmMethod, classParamName)
-                    .build();
+                        .addMethod(
+                                MethodSpec.methodBuilder("getKey")
+                                        .addStatement("return key")
+                                        .returns(String.class)
+                                        .build()
+                        )
+                        .addMethod(
+                                MethodSpec.methodBuilder("getCls")
+                                        .addStatement("return cls")
+                                        .returns(Class.class)
+                                        .build()
+                        )
+                        .addMethod(
+                                MethodSpec.methodBuilder("getHashMap")
+                                        .addStatement("return $L.get(cls)", JSON_TO_REALM_MAP_NAME)
+                                        .returns(parameterizedTypeName)
+                                        .build()
+                        )
+                        .build();
+
+                mapSubPolicyEnum = TypeSpec.enumBuilder("MapSubPolicy")
+                        .addEnumConstant("ASSIGN_ONLY")
+                        .addEnumConstant("ASSIGN_AND_MAP")
+                        .addEnumConstant("IGNORE")
+                        .build();
+
+                MethodSpec getRealmNameMethodSpec = MethodSpec
+                        .methodBuilder(getRealmNameMethod)
+                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                        .returns(String.class)
+                        .addParameter(Class.class, classParamName)
+                        .addParameter(String.class, keyParamName)
+                        .addStatement("$T realmName = null", String.class)
+                        .beginControlFlow("if ($L.containsKey($L))", JSON_TO_REALM_MAP_NAME, classParamName)
+                        .addStatement("$T map = $L.get($L)", parameterizedTypeName, JSON_TO_REALM_MAP_NAME, classParamName)
+                        .addStatement("realmName = $L($L, map)", getNameOfMethod, keyParamName)
+                        .endControlFlow()
+                        .addStatement("return realmName")
+                        .build();
 
 
-            MethodSpec mapJsonObjectToRealmMethodSpec = MethodSpec
-                    .methodBuilder(mapJsonObjectToRealmMethod)
-                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .addException(JSONException.class)
-                    .returns(JSONObject.class)
-                    .addParameter(Class.class, classParamName)
-                    .addParameter(JSONObject.class, "object")
-                    .addParameter(ClassName.bestGuess(mapSubPolicyEnum.name), "mapSubPolicy")
-                    .addStatement("$T mappedObject = new $T()", JSONObject.class, JSONObject.class)
-                    .beginControlFlow(" if ($L.containsKey($L))", JSON_TO_REALM_MAP_NAME, classParamName)
-                    .addStatement("$T fieldsMap = $L.get($L);", parameterizedTypeName, JSON_TO_REALM_MAP_NAME, classParamName)
-                    .addStatement("$T keySet = fieldsMap.keySet()", setString)
-                    .beginControlFlow("for (String setKey : keySet)")
-                    .addStatement("$T mappedKeyObject = fieldsMap.get(setKey)", Object.class)
-                    .beginControlFlow("if (object.has(setKey))")
-                    .addStatement("$T value = object.get(setKey)", Object.class)
-                    .beginControlFlow("if(mappedKeyObject instanceof String)")
-                    .addStatement("String mappedKey = (String) mappedKeyObject")
-                    .addStatement("mappedObject.put(mappedKey, value)")
-                    .nextControlFlow("else")
-                    .addStatement("MapReference mapReference = (MapReference) mappedKeyObject")
-                    .addStatement("String mappedKey = mapReference.getKey()")
-                    .beginControlFlow("switch (mapSubPolicy)")
-                    .addStatement("case ASSIGN_ONLY: mappedObject.put(mappedKey, value); break")
-                    .beginControlFlow("case ASSIGN_AND_MAP:")
-                    .beginControlFlow("if (value instanceof JSONObject)")
-                    .addStatement("mappedObject.put(mappedKey, $L(mapReference.getCls(), (JSONObject) value, mapSubPolicy))", mapJsonObjectToRealmMethod)
-                    .nextControlFlow("else if (value instanceof JSONArray)")
-                    .addStatement("mappedObject.put(mappedKey, $L(mapReference.getCls(), (JSONArray) value, mapSubPolicy))", mapJsonArrayToRealmMethod)
-                    .addStatement("break")
-                    .endControlFlow()
-                    .addStatement("break")
-                    .endControlFlow()
-                    .endControlFlow()
-                    .endControlFlow()
-                    .endControlFlow()
-                    .endControlFlow()
-                    .endControlFlow()
-                    .addStatement("return mappedObject")
-                    .build();
+                ParameterizedTypeName setString = ParameterizedTypeName.get(Set.class, String.class);
+
+                MethodSpec mapJsonObjectToRealmBaseMethodSpec = MethodSpec
+                        .methodBuilder(mapJsonObjectToRealmMethod)
+                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                        .addException(JSONException.class)
+                        .returns(JSONObject.class)
+                        .addParameter(Class.class, classParamName)
+                        .addParameter(JSONObject.class, "object")
+                        .addStatement("return $L($L, object, MapSubPolicy.ASSIGN_ONLY)", mapJsonObjectToRealmMethod, classParamName)
+                        .build();
+
+
+                MethodSpec mapJsonObjectToRealmMethodSpec = MethodSpec
+                        .methodBuilder(mapJsonObjectToRealmMethod)
+                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                        .addException(JSONException.class)
+                        .returns(JSONObject.class)
+                        .addParameter(Class.class, classParamName)
+                        .addParameter(JSONObject.class, "object")
+                        .addParameter(ClassName.bestGuess(mapSubPolicyEnum.name), "mapSubPolicy")
+                        .addStatement("$T mappedObject = new $T()", JSONObject.class, JSONObject.class)
+                        .beginControlFlow(" if ($L.containsKey($L))", JSON_TO_REALM_MAP_NAME, classParamName)
+                        .addStatement("$T fieldsMap = $L.get($L);", parameterizedTypeName, JSON_TO_REALM_MAP_NAME, classParamName)
+                        .addStatement("$T keySet = fieldsMap.keySet()", setString)
+                        .beginControlFlow("for (String setKey : keySet)")
+                        .addStatement("$T mappedKeyObject = fieldsMap.get(setKey)", Object.class)
+                        .beginControlFlow("if (object.has(setKey))")
+                        .addStatement("$T value = object.get(setKey)", Object.class)
+                        .beginControlFlow("if(mappedKeyObject instanceof String)")
+                        .addStatement("String mappedKey = (String) mappedKeyObject")
+                        .addStatement("mappedObject.put(mappedKey, value)")
+                        .nextControlFlow("else")
+                        .addStatement("MapReference mapReference = (MapReference) mappedKeyObject")
+                        .addStatement("String mappedKey = mapReference.getKey()")
+                        .beginControlFlow("switch (mapSubPolicy)")
+                        .addStatement("case ASSIGN_ONLY: mappedObject.put(mappedKey, value); break")
+                        .beginControlFlow("case ASSIGN_AND_MAP:")
+                        .beginControlFlow("if (value instanceof JSONObject)")
+                        .addStatement("mappedObject.put(mappedKey, $L(mapReference.getCls(), (JSONObject) value, mapSubPolicy))", mapJsonObjectToRealmMethod)
+                        .nextControlFlow("else if (value instanceof JSONArray)")
+                        .addStatement("mappedObject.put(mappedKey, $L(mapReference.getCls(), (JSONArray) value, mapSubPolicy))", mapJsonArrayToRealmMethod)
+                        .addStatement("break")
+                        .endControlFlow()
+                        .addStatement("break")
+                        .endControlFlow()
+                        .endControlFlow()
+                        .endControlFlow()
+                        .endControlFlow()
+                        .endControlFlow()
+                        .endControlFlow()
+                        .addStatement("return mappedObject")
+                        .build();
 
             /*
             for (String setKey : keySet) {
@@ -255,131 +258,131 @@ public class CustomRealmAnnotationProcessor extends AbstractProcessor {
             * */
 
 
-            MethodSpec mapJsonArrayToRealmBaseMethodSpec = MethodSpec
-                    .methodBuilder(mapJsonArrayToRealmMethod)
-                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .addException(JSONException.class)
-                    .returns(JSONArray.class)
-                    .addParameter(Class.class, classParamName)
-                    .addParameter(JSONArray.class, "array")
-                    .addStatement("return $L($L, array, MapSubPolicy.ASSIGN_ONLY)", mapJsonArrayToRealmMethod, classParamName)
-                    .build();
+                MethodSpec mapJsonArrayToRealmBaseMethodSpec = MethodSpec
+                        .methodBuilder(mapJsonArrayToRealmMethod)
+                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                        .addException(JSONException.class)
+                        .returns(JSONArray.class)
+                        .addParameter(Class.class, classParamName)
+                        .addParameter(JSONArray.class, "array")
+                        .addStatement("return $L($L, array, MapSubPolicy.ASSIGN_ONLY)", mapJsonArrayToRealmMethod, classParamName)
+                        .build();
 
-            MethodSpec mapJsonArrayToRealmMethodSpec = MethodSpec
-                    .methodBuilder(mapJsonArrayToRealmMethod)
-                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-                    .addException(JSONException.class)
-                    .returns(JSONArray.class)
-                    .addParameter(Class.class, classParamName)
-                    .addParameter(JSONArray.class, "array")
-                    .addParameter(ClassName.bestGuess(mapSubPolicyEnum.name), "mapSubPolicy")
-                    .addStatement("$T mappedArray = new $T()", JSONArray.class, JSONArray.class)
-                    .beginControlFlow("for (int i = 0; i < array.length(); i++)")
-                    .addStatement("mappedArray.put($L($L, ($T) array.get(i), mapSubPolicy))", mapJsonObjectToRealmMethod, classParamName, JSONObject.class)
-                    .endControlFlow()
-                    .addStatement("return mappedArray")
-                    .build();
-
-
-            MethodSpec getNameOfMethodSpec = MethodSpec
-                    .methodBuilder(getNameOfMethod)
-                    .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
-                    .returns(String.class)
-                    .addParameter(String.class, "key")
-                    .addParameter(parameterizedTypeName, "map")
-                    .addStatement("String name = null")
-                    .addStatement("String[] subKeys = key.split(\"\\\\.\")")
-                    .addStatement("final String baseKey = subKeys[0]")
-                    .addStatement("final Object value = map.get(baseKey)")
-                    .beginControlFlow("if(value instanceof String)")
-                    .addStatement("name = (String) value")
-                    .nextControlFlow("else if (value instanceof MapReference)")
-                    .addStatement("MapReference mapReference = (MapReference) value")
-                    .addStatement("name = mapReference.getKey()")
-                    .beginControlFlow("if (subKeys.length > 1)")
-                    .addStatement("final String subName = getNameOf(String.join(\".\", subKeys).replace(baseKey + \".\", \"\"), mapReference.getHashMap())")
-                    .addStatement("name += \".\"")
-                    .beginControlFlow("if (subName != null)")
-                    .addStatement("name += subName")
-                    .endControlFlow()
-                    .endControlFlow()
-                    .endControlFlow()
-                    .addStatement("return name")
-                    .build();
+                MethodSpec mapJsonArrayToRealmMethodSpec = MethodSpec
+                        .methodBuilder(mapJsonArrayToRealmMethod)
+                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                        .addException(JSONException.class)
+                        .returns(JSONArray.class)
+                        .addParameter(Class.class, classParamName)
+                        .addParameter(JSONArray.class, "array")
+                        .addParameter(ClassName.bestGuess(mapSubPolicyEnum.name), "mapSubPolicy")
+                        .addStatement("$T mappedArray = new $T()", JSONArray.class, JSONArray.class)
+                        .beginControlFlow("for (int i = 0; i < array.length(); i++)")
+                        .addStatement("mappedArray.put($L($L, ($T) array.get(i), mapSubPolicy))", mapJsonObjectToRealmMethod, classParamName, JSONObject.class)
+                        .endControlFlow()
+                        .addStatement("return mappedArray")
+                        .build();
 
 
-            realmGsonClassBuilder.addType(mapSubPolicyEnum);
-            realmGsonClassBuilder.addType(mapReferenceType);
-            realmGsonClassBuilder.addMethod(mapJsonObjectToRealmBaseMethodSpec);
-            realmGsonClassBuilder.addMethod(getRealmNameMethodSpec);
-            realmGsonClassBuilder.addMethod(mapJsonObjectToRealmMethodSpec);
-            realmGsonClassBuilder.addMethod(mapJsonArrayToRealmBaseMethodSpec);
-            realmGsonClassBuilder.addMethod(mapJsonArrayToRealmMethodSpec);
-            realmGsonClassBuilder.addMethod(getNameOfMethodSpec);
+                MethodSpec getNameOfMethodSpec = MethodSpec
+                        .methodBuilder(getNameOfMethod)
+                        .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+                        .returns(String.class)
+                        .addParameter(String.class, "key")
+                        .addParameter(parameterizedTypeName, "map")
+                        .addStatement("String name = null")
+                        .addStatement("String[] subKeys = key.split(\"\\\\.\")")
+                        .addStatement("final String baseKey = subKeys[0]")
+                        .addStatement("final Object value = map.get(baseKey)")
+                        .beginControlFlow("if(value instanceof String)")
+                        .addStatement("name = (String) value")
+                        .nextControlFlow("else if (value instanceof MapReference)")
+                        .addStatement("MapReference mapReference = (MapReference) value")
+                        .addStatement("name = mapReference.getKey()")
+                        .beginControlFlow("if (subKeys.length > 1)")
+                        .addStatement("final String subName = getNameOf(String.join(\".\", subKeys).replace(baseKey + \".\", \"\"), mapReference.getHashMap())")
+                        .addStatement("name += \".\"")
+                        .beginControlFlow("if (subName != null)")
+                        .addStatement("name += subName")
+                        .endControlFlow()
+                        .endControlFlow()
+                        .endControlFlow()
+                        .addStatement("return name")
+                        .build();
 
 
-            codeBlock = CodeBlock.builder()
-                    .addStatement("$T map", this.parameterizedTypeName);
+                realmGsonClassBuilder.addType(mapSubPolicyEnum);
+                realmGsonClassBuilder.addType(mapReferenceType);
+                realmGsonClassBuilder.addMethod(mapJsonObjectToRealmBaseMethodSpec);
+                realmGsonClassBuilder.addMethod(getRealmNameMethodSpec);
+                realmGsonClassBuilder.addMethod(mapJsonObjectToRealmMethodSpec);
+                realmGsonClassBuilder.addMethod(mapJsonArrayToRealmBaseMethodSpec);
+                realmGsonClassBuilder.addMethod(mapJsonArrayToRealmMethodSpec);
+                realmGsonClassBuilder.addMethod(getNameOfMethodSpec);
 
 
-            for (Element element : roundEnv.getElementsAnnotatedWith(RealmClass.class)) {
-                if (element.getKind() != ElementKind.CLASS) {
-                    messager.printMessage(Diagnostic.Kind.ERROR, "Can be applied to classes only.");
-                    return true;
-                }
-
-                TypeElement typeElement = ((TypeElement) element);
-
-                String qualifiedName = typeElement.getQualifiedName().toString();
-//                String packageName = getPackage(qualifiedName);
-                String className = getClassName(qualifiedName);
+                codeBlock = CodeBlock.builder()
+                        .addStatement("$T map", this.parameterizedTypeName);
 
 
-                for (Element elm : element.getEnclosedElements()) {
-                    if (elm.getKind() != ElementKind.FIELD
-                            || elm.getModifiers().contains(Modifier.TRANSIENT)
-                            || elm.getModifiers().contains(Modifier.STATIC)
-                            || elm.getAnnotation(Ignore.class) != null
-
-                            ) {
-                        continue;
+                for (Element element : roundEnv.getElementsAnnotatedWith(RealmClass.class)) {
+                    if (element.getKind() != ElementKind.CLASS) {
+                        messager.printMessage(Diagnostic.Kind.ERROR, "Can be applied to classes only.");
+                        return true;
                     }
 
+                    TypeElement typeElement = ((TypeElement) element);
 
-                    final TypeMirror elmType = elm.asType();
-                    final boolean isList = typeUtils.isAssignable(elmType, realmListClass)
-                            || typeUtils.isAssignable(elmType, realmResultsClass);
+                    String qualifiedName = typeElement.getQualifiedName().toString();
+//                String packageName = getPackage(qualifiedName);
+                    String className = getClassName(qualifiedName);
 
-                    final boolean isModelOrCollection =
-                            typeUtils.isAssignable(elmType, realmModelInterface)
-                                    || isList;
-                    String fieldName = elm.getSimpleName().toString();
-                    String newFieldName = CaseFormat.LOWER_CAMEL.convert(CaseFormat.UPPER_UNDERSCORE, fieldName);
-                    String targetModelName = null;
 
-                    if (isModelOrCollection) {
+                    for (Element elm : element.getEnclosedElements()) {
+                        if (elm.getKind() != ElementKind.FIELD
+                                || elm.getModifiers().contains(Modifier.TRANSIENT)
+                                || elm.getModifiers().contains(Modifier.STATIC)
+                                || elm.getAnnotation(Ignore.class) != null
+
+                                ) {
+                            continue;
+                        }
+
+
+                        final TypeMirror elmType = elm.asType();
+                        final boolean isList = typeUtils.isAssignable(elmType, realmListClass)
+                                || typeUtils.isAssignable(elmType, realmResultsClass);
+
+                        final boolean isModelOrCollection =
+                                typeUtils.isAssignable(elmType, realmModelInterface)
+                                        || isList;
+                        String fieldName = elm.getSimpleName().toString();
+                        String newFieldName = CaseFormat.LOWER_CAMEL.convert(CaseFormat.UPPER_UNDERSCORE, fieldName);
+                        String targetModelName = null;
+
+                        if (isModelOrCollection) {
 //                        final TypeSpec.Builder builder = initSubClassBuilder(className + CHAR_DOT + newFieldName);
 //                        builder.addField(createFieldSpec("$", fieldName));
-                        final ArrayList<String[]> subClasses = initModelSubClasses(className);
-                        final TypeMirror targetElm = isList ? elementUtils.getTypeElement(((ParameterizedTypeName) ParameterizedTypeName.get(elmType)).typeArguments.get(0).toString()).asType() : elmType;
-                        targetModelName = getClassName(targetElm.toString());
-                        subClasses.add(new String[]{fieldName, newFieldName, targetModelName});
+                            final ArrayList<String[]> subClasses = initModelSubClasses(className);
+                            final TypeMirror targetElm = isList ? elementUtils.getTypeElement(((ParameterizedTypeName) ParameterizedTypeName.get(elmType)).typeArguments.get(0).toString()).asType() : elmType;
+                            targetModelName = getClassName(targetElm.toString());
+                            subClasses.add(new String[]{fieldName, newFieldName, targetModelName});
 
-                    }
+                        }
 
-                    String serializedNameValue = null;
-                    SerializedName serializedNameAnnotation = elm.getAnnotation(SerializedName.class);
-                    if (serializedNameAnnotation != null) {
-                        serializedNameValue = serializedNameAnnotation.value();
+                        String serializedNameValue = null;
+                        SerializedName serializedNameAnnotation = elm.getAnnotation(SerializedName.class);
+                        if (serializedNameAnnotation != null) {
+                            serializedNameValue = serializedNameAnnotation.value();
 //                            cb.addStatement("map.put($S, $T.$L)", serializedNameValue, newClassName, newFieldName);
+                        }
+
+                        final ArrayList<ModelFieldSpec> modelFields = initModelFields(className);
+                        final ModelFieldSpec modelFieldSpec = new ModelFieldSpec(newFieldName, fieldName, serializedNameValue, targetModelName);
+                        modelFields.add(modelFieldSpec);
+
+
                     }
-
-                    final ArrayList<ModelFieldSpec> modelFields = initModelFields(className);
-                    final ModelFieldSpec modelFieldSpec = new ModelFieldSpec(newFieldName, fieldName, serializedNameValue, targetModelName);
-                    modelFields.add(modelFieldSpec);
-
-
-                }
 
 //                final ClassName newClassName = ClassName.get(PACKAGE_NAME, classNameWithSuffix);
 //                if (cb != null) {
@@ -395,36 +398,36 @@ public class CustomRealmAnnotationProcessor extends AbstractProcessor {
 //                }
 
 
-            }
-
-            final Set<Map.Entry<String, ArrayList<ModelFieldSpec>>> entries = modelFields.entrySet();
-
-            for (Map.Entry<String, ArrayList<ModelFieldSpec>> entry : entries) {
-                final String modelName = entry.getKey();
-                final TypeSpec.Builder builder = initClassBuilder(modelName, CLASS_SUFFIX);
-                addFieldsToClass(builder, modelName + CLASS_SUFFIX, entry.getValue(), "");
-
-
-                if (modelSubClasses.containsKey(modelName)) {
-                    final ArrayList<String[]> subClasses = modelSubClasses.get(modelName);
-                    for (String[] subClassNames : subClasses) {
-                        final TypeSpec.Builder subClassBuilder = initClassBuilder(subClassNames[1], "");
-                        subClassBuilder.addModifiers(Modifier.STATIC);
-                        subClassBuilder.addField(createFieldSpec("$", subClassNames[0]));
-                        final ArrayList<ModelFieldSpec> subModelFieldSpecs = modelFields.get(subClassNames[2]);
-                        addFieldsToClass(subClassBuilder, modelName + CLASS_SUFFIX, subModelFieldSpecs, subClassNames[0] + ".");
-                        builder.addType(subClassBuilder.build());
-                    }
                 }
-                JavaFile.builder(PACKAGE_NAME, builder.build()).build().writeTo(filer);
+
+                final Set<Map.Entry<String, ArrayList<ModelFieldSpec>>> entries = modelFields.entrySet();
+
+                for (Map.Entry<String, ArrayList<ModelFieldSpec>> entry : entries) {
+                    final String modelName = entry.getKey();
+                    final TypeSpec.Builder builder = initClassBuilder(modelName, CLASS_SUFFIX);
+                    addFieldsToClass(builder, modelName + CLASS_SUFFIX, entry.getValue(), "");
+
+
+                    if (modelSubClasses.containsKey(modelName)) {
+                        final ArrayList<String[]> subClasses = modelSubClasses.get(modelName);
+                        for (String[] subClassNames : subClasses) {
+                            final TypeSpec.Builder subClassBuilder = initClassBuilder(subClassNames[1], "");
+                            subClassBuilder.addModifiers(Modifier.STATIC);
+                            subClassBuilder.addField(createFieldSpec("$", subClassNames[0]));
+                            final ArrayList<ModelFieldSpec> subModelFieldSpecs = modelFields.get(subClassNames[2]);
+                            addFieldsToClass(subClassBuilder, modelName + CLASS_SUFFIX, subModelFieldSpecs, subClassNames[0] + ".");
+                            builder.addType(subClassBuilder.build());
+                        }
+                    }
+                    JavaFile.builder(PACKAGE_NAME, builder.build()).build().writeTo(filer);
+                }
+
+                realmGsonClassBuilder.addStaticBlock(codeBlock.build());
+                JavaFile.builder(PACKAGE_NAME, realmGsonClassBuilder.build()).build().writeTo(filer);
+
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-
-            realmGsonClassBuilder.addStaticBlock(codeBlock.build());
-            JavaFile.builder(PACKAGE_NAME, realmGsonClassBuilder.build()).build().writeTo(filer);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
 
         return true;

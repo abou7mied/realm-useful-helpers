@@ -1,10 +1,12 @@
 # Realm Useful Helpers
+[ ![Download](https://api.bintray.com/packages/abou7mied/maven/realm-useful-helpers/images/download.svg?version=1.0.1) ](https://bintray.com/abou7mied/maven/realm-useful-helpers/1.0.1/link)
 
 This library is inspired from [realmfieldnameshelper](https://github.com/cmelchior/realmfieldnameshelper) and added extra fetaures.
 
 ## Features:
 - Auto generate helper classes that can help make Realm queries more type safe
 -  Map Gson object field names to Realm field names and vice versa 
+
 
 For each Realm model class a corresponding `<class>Fields` class is created with static references
 to all queryable field names.

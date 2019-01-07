@@ -1,5 +1,5 @@
 # Realm Useful Helpers
-[ ![Download](https://api.bintray.com/packages/abou7mied/maven/realm-useful-helpers/images/download.svg?version=1.0.1) ](https://bintray.com/abou7mied/maven/realm-useful-helpers/1.0.1/link)
+[ ![Download](https://api.bintray.com/packages/abou7mied/maven/realm-useful-helpers/images/download.svg?version=1.0.2) ](https://bintray.com/abou7mied/maven/realm-useful-helpers/1.0.2/link)
 
 This library is inspired from [realmfieldnameshelper](https://github.com/cmelchior/realmfieldnameshelper) and added extra fetaures.
 

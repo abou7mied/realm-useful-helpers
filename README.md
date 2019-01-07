@@ -19,15 +19,6 @@ Include the following dependency in your `gradle.build` file
 annotationProcessor 'com.github.abou7mied:realm-useful-helpers:1.0.2'
 ```
 
-Add the maven repo to your repositories
-```gradle
-repositories {
-    maven {
-        url "https://dl.bintray.com/abou7mied/maven"
-    }
-}
-```
-
 ## Usage
 
 The library adds an annotation processor that automatically detects all Realm model classes and

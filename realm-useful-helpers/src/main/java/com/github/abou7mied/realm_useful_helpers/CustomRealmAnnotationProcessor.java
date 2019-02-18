@@ -102,7 +102,7 @@ public class CustomRealmAnnotationProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
 
 
-        if (parameterizedTypeName != null)
+        if (realmResultsClass != null)
             try {
 
                 parameterizedTypeName = ParameterizedTypeName.get(ClassName.get(HashMap.class), ClassName.get(String.class), ClassName.get(Object.class));
@@ -344,7 +344,7 @@ public class CustomRealmAnnotationProcessor extends AbstractProcessor {
                                 || elm.getModifiers().contains(Modifier.STATIC)
                                 || elm.getAnnotation(Ignore.class) != null
 
-                                ) {
+                        ) {
                             continue;
                         }
 

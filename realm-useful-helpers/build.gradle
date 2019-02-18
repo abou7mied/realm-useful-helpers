@@ -28,7 +28,7 @@ ext {
     siteUrl = 'https://github.com/abou7mied/realm-useful-helpers'
     gitUrl = 'https://github.com/abou7mied/realm-useful-helpers.git'
 
-    libraryVersion = '1.0.2'
+    libraryVersion = '1.0.3'
 
     developerId = 'abou7mied'
     developerName = 'Ahmed Sabry'

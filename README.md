@@ -1,5 +1,5 @@
 # Realm Useful Helpers
-[ ![Download](https://api.bintray.com/packages/abou7mied/maven/realm-useful-helpers/images/download.svg?version=1.0.2) ](https://bintray.com/abou7mied/maven/realm-useful-helpers/1.0.2/link)
+[ ![Download](https://api.bintray.com/packages/abou7mied/maven/realm-useful-helpers/images/download.svg?version=1.0.3) ](https://bintray.com/abou7mied/maven/realm-useful-helpers/1.0.3/link)
 
 This library is inspired from [realmfieldnameshelper](https://github.com/cmelchior/realmfieldnameshelper) and added extra fetaures.
 
@@ -16,7 +16,7 @@ to all queryable field names.
 Include the following dependency in your `gradle.build` file
 
 ```gradle
-annotationProcessor 'com.github.abou7mied:realm-useful-helpers:1.0.2'
+annotationProcessor 'com.github.abou7mied:realm-useful-helpers:1.0.3'
 ```
 
 ## Usage
